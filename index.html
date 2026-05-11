@@ -1,6 +1,4 @@
-from pathlib import Path
-
-html = r'''<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -278,9 +276,3 @@ draw();
 
 </body>
 </html>
-'''
-
-path = Path("/mnt/data/liminal_radius_terminal.html")
-path.write_text(html, encoding="utf-8")
-
-print(f"Saved HTML to: {path}")
