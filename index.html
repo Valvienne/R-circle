@@ -1,116 +1,274 @@
-<!DOCTYPE html>
+from pathlib import Path
+
+html = r'''<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Radius Circle Visualizer</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Liminal Radius Terminal</title>
 
 <style>
-    body {
-        margin: 0;
-        background: #111;
-        color: #e6e6e6;
-        font-family: Arial, sans-serif;
-        overflow: hidden;
-    }
+html, body {
+    margin: 0;
+    overflow: hidden;
+    background: #07090c;
+    color: #d7e3f4;
+    font-family: Consolas, monospace;
+    height: 100%;
+}
 
-    .ui {
-        position: fixed;
-        top: 20px;
-        left: 20px;
-        background: rgba(20,20,20,0.9);
-        border: 1px solid #444;
-        padding: 14px;
-        border-radius: 12px;
-        backdrop-filter: blur(6px);
-    }
+canvas {
+    display: block;
+}
 
-    input {
-        width: 120px;
-        padding: 8px;
-        margin-top: 8px;
-        background: #1b1b1b;
-        color: white;
-        border: 1px solid #555;
-        border-radius: 6px;
-    }
+.panel {
+    position: fixed;
+    top: 18px;
+    left: 18px;
+    width: 300px;
+    background: rgba(10, 14, 18, 0.78);
+    border: 1px solid rgba(120,160,210,0.18);
+    border-radius: 14px;
+    padding: 18px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 0 25px rgba(80,120,180,0.08);
+}
 
-    canvas {
-        display: block;
-    }
+.title {
+    font-size: 14px;
+    letter-spacing: 2px;
+    color: #9cb7d8;
+    margin-bottom: 14px;
+}
 
-    .info {
-        margin-top: 10px;
-        color: #aaa;
-        font-size: 14px;
-    }
+label {
+    font-size: 12px;
+    opacity: 0.75;
+    display: block;
+    margin-bottom: 8px;
+}
+
+input[type="range"] {
+    width: 100%;
+}
+
+input[type="number"] {
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid rgba(180,220,255,0.15);
+    color: #dbe9ff;
+    border-radius: 8px;
+    outline: none;
+}
+
+.stats {
+    margin-top: 18px;
+    line-height: 1.8;
+    font-size: 12px;
+    color: rgba(220,235,255,0.7);
+}
+
+.footer {
+    position: fixed;
+    right: 18px;
+    bottom: 14px;
+    font-size: 11px;
+    color: rgba(210,220,235,0.28);
+    letter-spacing: 2px;
+}
+
+.toggle {
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: rgba(220,235,255,0.7);
+}
 </style>
 </head>
 <body>
 
-<div class="ui">
-    <div>Circle Radius</div>
-    <input type="number" id="radiusInput" value="150" min="1">
+<div class="panel">
+    <div class="title">SPATIAL RADIUS TERMINAL</div>
 
-    <div class="info">
-        The white dot is the center point.<br>
-        Radius expands outward from it.
+    <label>ACTIVE RADIUS</label>
+    <input type="range" id="radiusSlider" min="10" max="1200" value="240">
+
+    <input type="number" id="radiusInput" value="240">
+
+    <div class="toggle">
+        <input type="checkbox" id="pulseToggle" checked>
+        <span>Ambient pulse</span>
     </div>
+
+    <div class="stats">
+        CENTER VECTOR :: [0,0]<br>
+        DIAMETER :: <span id="diameter">480</span><br>
+        CIRCUMFERENCE :: <span id="circumference">1507.96</span><br>
+        SIGNAL DECAY :: NOMINAL
+    </div>
+</div>
+
+<div class="footer">
+    SYSTEM ACTIVE :: LOW LIGHT ENVIRONMENT
 </div>
 
 <canvas id="canvas"></canvas>
 
 <script>
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
 
-const radiusInput = document.getElementById("radiusInput");
+const radiusSlider = document.getElementById('radiusSlider');
+const radiusInput = document.getElementById('radiusInput');
+const pulseToggle = document.getElementById('pulseToggle');
 
-function resizeCanvas() {
+const diameterText = document.getElementById('diameter');
+const circumferenceText = document.getElementById('circumference');
+
+let time = 0;
+
+function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 }
 
-window.addEventListener("resize", resizeCanvas);
-resizeCanvas();
+window.addEventListener('resize', resize);
+resize();
+
+radiusSlider.addEventListener('input', () => {
+    radiusInput.value = radiusSlider.value;
+});
+
+radiusInput.addEventListener('input', () => {
+    radiusSlider.value = radiusInput.value;
+});
+
+function drawGrid(centerX, centerY) {
+    const spacing = 50;
+
+    ctx.strokeStyle = 'rgba(120,150,190,0.05)';
+    ctx.lineWidth = 1;
+
+    for (let x = centerX % spacing; x < canvas.width; x += spacing) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+    }
+
+    for (let y = centerY % spacing; y < canvas.height; y += spacing) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+    }
+}
+
+function noise() {
+    for (let i = 0; i < 1400; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+
+        ctx.fillStyle = 'rgba(255,255,255,0.012)';
+        ctx.fillRect(x, y, 1, 1);
+    }
+}
 
 function draw() {
+    time += 0.01;
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
 
-    const radius = Number(radiusInput.value);
+    drawGrid(centerX, centerY);
 
-    // Circle
+    let radius = Number(radiusInput.value);
+
+    if (pulseToggle.checked) {
+        radius += Math.sin(time * 2) * 2;
+    }
+
+    diameterText.textContent = (radius * 2).toFixed(2);
+    circumferenceText.textContent = (2 * Math.PI * radius).toFixed(2);
+
+    // Glow
+    const gradient = ctx.createRadialGradient(
+        centerX,
+        centerY,
+        radius * 0.15,
+        centerX,
+        centerY,
+        radius
+    );
+
+    gradient.addColorStop(0, 'rgba(130,180,255,0.16)');
+    gradient.addColorStop(0.7, 'rgba(100,160,255,0.05)');
+    gradient.addColorStop(1, 'rgba(100,160,255,0.00)');
+
     ctx.beginPath();
     ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-    ctx.strokeStyle = "#6fb3ff";
-    ctx.lineWidth = 3;
+    ctx.fillStyle = gradient;
+    ctx.fill();
+
+    // Main ring
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(130,190,255,0.75)';
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = 'rgba(130,190,255,0.6)';
     ctx.stroke();
 
-    // Filled subtle glow
-    ctx.fillStyle = "rgba(111, 179, 255, 0.12)";
-    ctx.fill();
-
-    // Center point
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, 5, 0, Math.PI * 2);
-    ctx.fillStyle = "white";
-    ctx.fill();
+    // Echo rings
+    for (let i = 1; i <= 3; i++) {
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius + i * 40, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(130,190,255,${0.08 - i * 0.015})`;
+        ctx.lineWidth = 1;
+        ctx.shadowBlur = 0;
+        ctx.stroke();
+    }
 
     // Radius line
     ctx.beginPath();
     ctx.moveTo(centerX, centerY);
     ctx.lineTo(centerX + radius, centerY);
-    ctx.strokeStyle = "#ffffff88";
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+    ctx.stroke();
+
+    // Center point
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
+    ctx.fillStyle = 'white';
+    ctx.shadowBlur = 18;
+    ctx.shadowColor = 'rgba(255,255,255,0.9)';
+    ctx.fill();
+
+    // Sweep line
+    const sweepAngle = time * 0.6;
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.lineTo(
+        centerX + Math.cos(sweepAngle) * radius,
+        centerY + Math.sin(sweepAngle) * radius
+    );
+    ctx.strokeStyle = 'rgba(170,220,255,0.14)';
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Text
-    ctx.fillStyle = "#ddd";
-    ctx.font = "16px Arial";
-    ctx.fillText(`Radius: ${radius}`, centerX + radius / 2 - 30, centerY - 10);
+    // Tiny scanlines
+    for (let y = 0; y < canvas.height; y += 3) {
+        ctx.fillStyle = 'rgba(255,255,255,0.008)';
+        ctx.fillRect(0, y, canvas.width, 1);
+    }
+
+    noise();
 
     requestAnimationFrame(draw);
 }
@@ -120,3 +278,9 @@ draw();
 
 </body>
 </html>
+'''
+
+path = Path("/mnt/data/liminal_radius_terminal.html")
+path.write_text(html, encoding="utf-8")
+
+print(f"Saved HTML to: {path}")
